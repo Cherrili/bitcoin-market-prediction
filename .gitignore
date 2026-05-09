@@ -1,0 +1,18 @@
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Kaggle dataset (large files, do not redistribute)
+archive/
+archive.zip
+
+# Course materials (private)
+*.pdf
+*.docx
+*.zip
+数据集.docx
+
+# Virtual environment
+venv/
+.env

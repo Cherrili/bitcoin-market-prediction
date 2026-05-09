@@ -1,0 +1,7 @@
+Model,Accuracy,F1_macro,ROC_AUC,Best Params
+Logistic Regression,0.1977,0.1843,0.5611,{'C': 0.01}
+Random Forest,0.5781,0.3105,0.5229,"{'max_depth': 10, 'min_samples_split': 2, 'n_estimators': 100}"
+XGBoost,0.22,0.1575,0.5392,"{'learning_rate': 0.05, 'max_depth': 5, 'n_estimators': 100}"
+LightGBM,0.2232,0.1216,0.5764,"{'learning_rate': 0.05, 'max_depth': 5, 'n_estimators': 100}"
+SVM,0.2168,0.1218,0.387,"{'C': 10, 'kernel': 'linear'}"
+KNN,0.577,0.3119,0.4974,"{'n_neighbors': 3, 'weights': 'distance'}"
