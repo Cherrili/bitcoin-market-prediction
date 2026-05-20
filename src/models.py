@@ -14,9 +14,11 @@ Each dict has keys:
 """
 
 from sklearn.linear_model import LogisticRegression
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import RandomForestClassifier, VotingClassifier
 from sklearn.svm import SVC
 from sklearn.neighbors import KNeighborsClassifier
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
 import xgboost as xgb
 import lightgbm as lgb
 
@@ -39,7 +41,7 @@ def get_model_configs() -> list:
                                                 class_weight="balanced"),
             "params": {
                 "n_estimators":      [100, 200],
-                "max_depth":         [5, 10, None],
+                "max_depth":         [5, 10],
                 "min_samples_split": [2, 5],
             },
             "scaled":  False,
@@ -56,12 +58,14 @@ def get_model_configs() -> list:
                 n_jobs=-1,
             ),
             "params": {
-                "n_estimators":  [100, 200],
-                "max_depth":     [3, 5],
-                "learning_rate": [0.05, 0.1],
+                "n_estimators":    [100, 200],
+                "max_depth":       [3, 5],
+                "learning_rate":   [0.05, 0.1],
+                "min_child_weight":[1, 5],
+                "subsample":       [0.8, 1.0],
             },
-            "scaled":           False,
-            "encoded":          True,
+            "scaled":            False,
+            "encoded":           True,
             "use_sample_weight": True,
         },
         {
@@ -72,15 +76,17 @@ def get_model_configs() -> list:
                 random_state=42,
                 n_jobs=-1,
                 verbose=-1,
-                class_weight="balanced",
             ),
             "params": {
-                "n_estimators":  [100, 200],
-                "max_depth":     [3, 5, -1],
-                "learning_rate": [0.05, 0.1],
+                "n_estimators":     [100, 200],
+                "max_depth":        [3, 5],
+                "learning_rate":    [0.05, 0.1],
+                "min_child_samples":[20, 50],
+                "num_leaves":       [31, 63],
             },
-            "scaled":  False,
-            "encoded": True,
+            "scaled":            False,
+            "encoded":           True,
+            "use_sample_weight": True,
         },
         {
             "name": "SVM",
@@ -102,5 +108,29 @@ def get_model_configs() -> list:
             },
             "scaled":  True,
             "encoded": False,
+        },
+        {
+            # Soft-voting ensemble: RF (tree, Sideways-strong) + LGB (gradient
+            # boosting, Bear-capable) — deliberately diverse prediction profiles.
+            # RF uses unscaled features; LGB also works on raw features.
+            "name": "Voting Ensemble",
+            "estimator": VotingClassifier(
+                estimators=[
+                    ("rf",  RandomForestClassifier(
+                        n_estimators=100, max_depth=10,
+                        class_weight="balanced", random_state=42, n_jobs=-1)),
+                    ("lgb", lgb.LGBMClassifier(
+                        objective="multiclass", num_class=3,
+                        n_estimators=200, max_depth=5, learning_rate=0.1,
+                        min_child_samples=50, num_leaves=31,
+                        random_state=42, n_jobs=-1, verbose=-1)),
+                ],
+                voting="soft",
+                n_jobs=-1,
+            ),
+            "params": {},
+            "scaled":  False,
+            "encoded": False,
+            "use_sample_weight": True,
         },
     ]

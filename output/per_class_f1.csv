@@ -1,0 +1,22 @@
+Model,Class,Precision,Recall,F1
+Logistic Regression,Bear(-1),0.2206,0.3352,0.2661
+Logistic Regression,Sideways(0),0.0,0.0,0.0
+Logistic Regression,Bull(1),0.1883,0.6,0.2867
+Random Forest,Bear(-1),0.0,0.0,0.0
+Random Forest,Sideways(0),0.5899,0.933,0.7228
+Random Forest,Bull(1),0.4265,0.1381,0.2086
+XGBoost,Bear(-1),0.0,0.0,0.0
+XGBoost,Sideways(0),0.7143,0.0725,0.1316
+XGBoost,Bull(1),0.2237,0.9429,0.3616
+LightGBM,Bear(-1),0.309,0.5196,0.3875
+LightGBM,Sideways(0),0.8387,0.1413,0.2419
+LightGBM,Bull(1),0.2669,0.6952,0.3857
+SVM,Bear(-1),0.0,0.0,0.0
+SVM,Sideways(0),0.2727,0.0054,0.0107
+SVM,Bull(1),0.2186,0.9619,0.3563
+KNN,Bear(-1),0.0,0.0,0.0
+KNN,Sideways(0),0.5883,0.9293,0.7205
+KNN,Bull(1),0.4348,0.1429,0.2151
+Voting Ensemble,Bear(-1),0.3796,0.2905,0.3291
+Voting Ensemble,Sideways(0),0.6134,0.4312,0.5064
+Voting Ensemble,Bull(1),0.2524,0.5,0.3355

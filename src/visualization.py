@@ -53,6 +53,91 @@ def plot_feature_importances(trained: dict, feature_cols: list,
     print(f"   Feature importance plots saved to: {output_dir}")
 
 
+def plot_distribution_shift(df: pd.DataFrame, split_idx: int,
+                             output_dir: str) -> None:
+    """
+    Two-panel chart quantifying train/test distribution shift:
+      left  — class distribution (%) in train vs test
+      right — rolling 90-day Bull/Bear/Sideways fraction over time
+    """
+    os.makedirs(output_dir, exist_ok=True)
+
+    train_df = df.iloc[:split_idx].copy()
+    test_df  = df.iloc[split_idx:].copy()
+
+    def _pct(d):
+        counts = {c: int((d["label"] == c).sum()) for c in CLASSES}
+        total  = sum(counts.values())
+        return {k: v / total * 100 for k, v in counts.items()}
+
+    tr_pct = _pct(train_df)
+    te_pct = _pct(test_df)
+
+    fig, (ax_bar, ax_roll) = plt.subplots(1, 2, figsize=(14, 5))
+
+    # ── left: grouped bar chart ───────────────────────────────────────────────
+    x       = np.arange(3)
+    width   = 0.35
+    colors  = ["#d62728", "#ff7f0e", "#2ca02c"]
+    tr_vals = [tr_pct[c] for c in CLASSES]
+    te_vals = [te_pct[c] for c in CLASSES]
+
+    bars_tr = ax_bar.bar(x - width/2, tr_vals, width,
+                         label="Train (2010–2021)", color=colors, alpha=0.85)
+    bars_te = ax_bar.bar(x + width/2, te_vals, width,
+                         label="Test  (2021–2023)", color=colors, alpha=0.45,
+                         edgecolor=colors, linewidth=1.5)
+
+    for bar, v in zip(bars_tr, tr_vals):
+        ax_bar.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.5,
+                    f"{v:.1f}%", ha="center", va="bottom", fontsize=9)
+    for bar, v in zip(bars_te, te_vals):
+        ax_bar.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.5,
+                    f"{v:.1f}%", ha="center", va="bottom", fontsize=9)
+
+    ax_bar.set_xticks(x); ax_bar.set_xticklabels(CLASS_NAMES)
+    ax_bar.set_ylabel("Percentage of Samples (%)")
+    ax_bar.set_title("Class Distribution: Train vs Test\n(Distribution Shift)")
+    ax_bar.legend(); ax_bar.set_ylim(0, 75)
+
+    # Print numbers to terminal
+    print("\n   Distribution shift analysis:")
+    for c, cn in zip(CLASSES, CLASS_NAMES):
+        print(f"     {cn:<14}  train={tr_pct[c]:.1f}%  test={te_pct[c]:.1f}%"
+              f"  Δ={te_pct[c]-tr_pct[c]:+.1f}%")
+
+    # ── right: rolling 90-day label fraction ─────────────────────────────────
+    df2 = df.copy()
+    df2 = df2.sort_values("datetime").reset_index(drop=True)
+    df2["is_bear"] = (df2["label"] == -1).astype(float)
+    df2["is_bull"] = (df2["label"] ==  1).astype(float)
+    df2["is_side"] = (df2["label"] ==  0).astype(float)
+
+    roll = 90
+    for col, color, label in [
+        ("is_bear", "#d62728", "Bear"),
+        ("is_side", "#ff7f0e", "Sideways"),
+        ("is_bull", "#2ca02c", "Bull"),
+    ]:
+        ax_roll.plot(df2["datetime"],
+                     df2[col].rolling(roll, min_periods=1).mean() * 100,
+                     color=color, lw=1.5, label=label)
+
+    split_date = df2["datetime"].iloc[split_idx] if split_idx < len(df2) else None
+    if split_date is not None:
+        ax_roll.axvline(split_date, color="black", ls="--", lw=1.5,
+                        label="Train/Test split")
+
+    ax_roll.set_ylabel(f"Rolling {roll}-day fraction (%)")
+    ax_roll.set_title("Market State Distribution Over Time")
+    ax_roll.legend(fontsize=9); ax_roll.set_ylim(0, 100)
+
+    plt.tight_layout()
+    fig.savefig(f"{output_dir}/distribution_shift.png", bbox_inches="tight")
+    plt.close(fig)
+    print(f"   Distribution shift chart saved.")
+
+
 def plot_eda(df: pd.DataFrame, output_dir: str) -> None:
     """
     Save a two-panel EDA chart:

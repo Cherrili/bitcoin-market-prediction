@@ -15,7 +15,7 @@ import seaborn as sns
 from sklearn.preprocessing import label_binarize
 from sklearn.metrics import (
     accuracy_score, f1_score, roc_auc_score,
-    confusion_matrix, roc_curve,
+    confusion_matrix, roc_curve, precision_recall_fscore_support,
 )
 
 from .config import CLASSES, CLASS_NAMES, LBL_MAP_INV, MODEL_COLORS
@@ -48,7 +48,8 @@ def evaluate_models(trained: dict, split: SplitResult,
         ax.set_xlabel("False Positive Rate")
     axes_roc[0].set_ylabel("True Positive Rate")
 
-    summary_rows = []
+    summary_rows   = []
+    per_class_rows = []
 
     for i, (name, info) in enumerate(trained.items()):
         model = info["model"]
@@ -83,6 +84,19 @@ def evaluate_models(trained: dict, split: SplitResult,
             "Best Params": str(info["best_p"]),
         })
 
+        # Per-class precision / recall / F1
+        p_pc, r_pc, f_pc, _ = precision_recall_fscore_support(
+            y_test, y_pred, labels=CLASSES, zero_division=0
+        )
+        for cls_i, cls_name in zip(CLASSES, CLASS_NAMES):
+            idx = list(CLASSES).index(cls_i)
+            per_class_rows.append({
+                "Model": name, "Class": cls_name,
+                "Precision": round(p_pc[idx], 4),
+                "Recall":    round(r_pc[idx], 4),
+                "F1":        round(f_pc[idx], 4),
+            })
+
         # ── confusion matrix ──────────────────────────────────────────────────
         _save_confusion_matrix(y_test, y_pred, name, output_dir)
 
@@ -106,6 +120,9 @@ def evaluate_models(trained: dict, split: SplitResult,
     _save_summary_table(summary_df, output_dir)
     summary_df.to_csv(f"{output_dir}/model_summary.csv", index=False)
 
+    # ── per-class F1 breakdown ────────────────────────────────────────────────
+    _save_per_class_breakdown(per_class_rows, output_dir)
+
     print(f"\n   Confusion matrices + ROC curves saved to: {output_dir}")
     return summary_df
 
@@ -127,6 +144,32 @@ def _save_confusion_matrix(y_true, y_pred, model_name: str,
     safe = model_name.replace(" ", "_")
     fig.savefig(f"{output_dir}/{safe}_confusion_matrix.png")
     plt.close(fig)
+
+
+def _save_per_class_breakdown(rows: list, output_dir: str) -> None:
+    """Save per-class F1 heatmap and CSV."""
+    if not rows:
+        return
+    df = pd.DataFrame(rows)
+    df.to_csv(f"{output_dir}/per_class_f1.csv", index=False)
+
+    # Pivot to matrix: rows = models, cols = classes
+    pivot = df.pivot(index="Model", columns="Class", values="F1")
+    # Keep column order: Bear, Sideways, Bull
+    col_order = [c for c in CLASS_NAMES if c in pivot.columns]
+    pivot = pivot[col_order]
+
+    fig, ax = plt.subplots(figsize=(7, len(pivot) * 0.55 + 1.5))
+    sns.heatmap(pivot, annot=True, fmt=".3f", cmap="YlGn",
+                vmin=0, vmax=0.6, linewidths=0.5, ax=ax,
+                annot_kws={"size": 10})
+    ax.set_title("Per-Class F1 Score by Model", fontsize=13, pad=12)
+    ax.set_xlabel("Market State"); ax.set_ylabel("")
+    ax.set_yticklabels(ax.get_yticklabels(), rotation=0)
+    plt.tight_layout()
+    fig.savefig(f"{output_dir}/per_class_f1_heatmap.png", bbox_inches="tight")
+    plt.close(fig)
+    print("   Per-class F1 heatmap saved.")
 
 
 def _save_summary_table(summary_df: pd.DataFrame, output_dir: str) -> None:
