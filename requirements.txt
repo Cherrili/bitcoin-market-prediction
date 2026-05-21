@@ -1,4 +1,4 @@
-﻿pandas==3.0.2
+pandas==3.0.2
 numpy==2.4.4
 scikit-learn==1.8.0
 xgboost==3.2.0
@@ -7,3 +7,5 @@ matplotlib==3.10.9
 seaborn==0.13.2
 streamlit==1.57.0
 pillow>=10.0.0
+torch>=2.0.0
+boruta>=0.3

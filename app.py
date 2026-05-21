@@ -21,6 +21,7 @@ MODEL_NAMES = [
     "LightGBM",
     "SVM",
     "KNN",
+    "Voting_Ensemble",
 ]
 MODEL_DISPLAY = {m: m.replace("_", " ") for m in MODEL_NAMES}
 
@@ -181,7 +182,7 @@ with st.sidebar:
     page = st.radio(
         "Navigation",
         ["Overview", "Model Performance", "Confusion Matrix",
-         "ROC Curves", "Feature Importance"],
+         "ROC Curves", "Feature Importance", "LSTM", "RL Agent (DQN)"],
         label_visibility="collapsed",
     )
     st.divider()
@@ -233,9 +234,11 @@ def page_overview():
 | LightGBM | GridSearchCV | `class_weight="balanced"` |
 | SVM | GridSearchCV | `class_weight="balanced"` |
 | KNN | GridSearchCV | — |
+| **Voting Ensemble** | Fixed (LR+RF+SVM) | `class_weight="balanced"` |
+| **DQN (RL Agent)** | 60 training episodes | PnL-shaped reward |
 
-**Cross-validation**: `TimeSeriesSplit(n_splits=5)`
-**Scoring metric**: F1 macro
+**Cross-validation**: `TimeSeriesSplit(n_splits=5)` (supervised)
+**Scoring metric**: F1 macro (supervised) / Cumulative return (RL)
 """)
 
     st.divider()
@@ -311,9 +314,11 @@ def page_confusion():
                "Classes: Bear (−1) / Sideways (0) / Bull (1)")
     st.divider()
 
+    all_cm_models = MODEL_NAMES + ["LSTM", "DQN"]
+    all_cm_display = {**MODEL_DISPLAY, "LSTM": "LSTM", "DQN": "DQN (RL Agent)"}
     model_key = st.selectbox(
-        "Select model", MODEL_NAMES,
-        format_func=lambda x: MODEL_DISPLAY[x],
+        "Select model", all_cm_models,
+        format_func=lambda x: all_cm_display.get(x, x),
     )
     col, _ = st.columns([3, 2])
     with col:
@@ -338,10 +343,137 @@ def page_feature_importance():
     st.image(load_image(FEAT_IMP_FILES[model_key]), width="stretch")
 
 
+def page_rl():
+    st.title("RL Agent — Deep Q-Network (DQN)")
+    st.caption(
+        "A DQN agent trained to **maximise portfolio return** rather than match a label. "
+        "Reward = position × 30-day realised return. "
+        "Actions: Bear (short) · Sideways (flat) · Bull (long)."
+    )
+    st.divider()
+
+    dqn_cm   = os.path.join(OUTPUT_DIR, "DQN_confusion_matrix.png")
+    dqn_rew  = os.path.join(OUTPUT_DIR, "DQN_training_rewards.png")
+    dqn_cum  = os.path.join(OUTPUT_DIR, "DQN_cumulative_return.png")
+
+    if not os.path.exists(dqn_cm):
+        st.warning(
+            "DQN output not found. Re-run training to generate RL results:  \n"
+            "`python -m src.main`"
+        )
+        return
+
+    # ── classification metrics from summary ──────────────────────────────────
+    df = load_summary()
+    dqn_row = df[df["Model"] == "DQN (RL)"]
+    if not dqn_row.empty:
+        row = dqn_row.iloc[0]
+        c1, c2, c3 = st.columns(3)
+        c1.metric("DQN Accuracy", f"{row['Accuracy']:.4f}")
+        c2.metric("DQN F1 (macro)", f"{row['F1_macro']:.4f}")
+        c3.metric("Epochs trained", "60")
+        st.divider()
+
+    # ── architecture description ──────────────────────────────────────────────
+    with st.expander("DQN Architecture & Training Details", expanded=False):
+        st.markdown("""
+**Network**
+- Input: Top-40 on-chain features (StandardScaler-normalised)
+- Layer 1: Linear(40→128) + LayerNorm + ReLU + Dropout(0.2)
+- Layer 2: Linear(128→64) + LayerNorm + ReLU
+- Output:  Linear(64→3) Q-values for {Bear, Sideways, Bull}
+
+**Algorithm** — Double-DQN
+- Experience replay buffer (20 000 transitions)
+- Hard target-network update every 200 gradient steps
+- ε-greedy exploration: ε 1.0 → 0.05 (decay ×0.997)
+- Optimizer: Adam (lr=3e-4, weight_decay=1e-5)
+- Loss: Smooth-L1 (Huber) | Grad-clip: 1.0
+
+**Key difference from supervised models**
+The objective is cumulative *portfolio return*, not label accuracy.
+The agent can learn asymmetric risk preferences (e.g. be more
+conservative during uncertain regimes) that a classifier cannot capture.
+""")
+
+    st.divider()
+    tab1, tab2, tab3 = st.tabs(
+        ["Confusion Matrix", "Training Reward Curve", "Cumulative Return"]
+    )
+    with tab1:
+        col, _ = st.columns([3, 2])
+        with col:
+            st.image(load_image("DQN_confusion_matrix.png"), width="stretch")
+    with tab2:
+        st.image(load_image("DQN_training_rewards.png"), width="stretch")
+        st.caption("Episode reward converging upward indicates the agent is "
+                   "learning to improve its position-sizing.")
+    with tab3:
+        st.image(load_image("DQN_cumulative_return.png"), width="stretch")
+        st.caption("Orange = DQN agent PnL · Blue dashed = buy-and-hold baseline.")
+
+
 # ── router ────────────────────────────────────────────────────────────────────
+
+def page_lstm():
+    st.title("LSTM — Sequential Market State Classifier")
+    st.caption(
+        "Bidirectional LSTM that takes the **past 30 days** of on-chain features as input, "
+        "capturing temporal dependencies that tabular models miss."
+    )
+    st.divider()
+
+    if not os.path.exists(os.path.join(OUTPUT_DIR, "LSTM_confusion_matrix.png")):
+        st.warning("LSTM output not found. Re-run training:  \n`python -m src.main`")
+        return
+
+    df = load_summary()
+    lstm_row = df[df["Model"] == "LSTM"]
+    if not lstm_row.empty:
+        row = lstm_row.iloc[0]
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Accuracy",   f"{row['Accuracy']:.4f}")
+        c2.metric("F1 (macro)", f"{row['F1_macro']:.4f}")
+        c3.metric("ROC AUC",    f"{row['ROC_AUC']:.4f}")
+        st.divider()
+
+    with st.expander("Architecture", expanded=False):
+        st.markdown("""
+**Input**
+Past 30 days of Top-40 on-chain features → shape `(batch, 30, 40)`
+
+**Network**
+- Bidirectional LSTM: 2 layers × 128 hidden units (→ 256 after concat)
+- LayerNorm + Dropout(0.3)
+- Linear(256 → 3) classification head
+
+**Training**
+- Loss: CrossEntropy with class weights (inverse frequency)
+- Optimizer: Adam (lr=5e-4, weight_decay=1e-4)
+- LR scheduler: ReduceLROnPlateau (×0.5 after 5 epochs no improvement)
+- Early stopping: patience=10 on validation loss
+- Chronological 85/15 train/val split within training data
+
+**Key advantage over tabular models**
+Each prediction uses the *sequence* of the last 30 days, not just
+today's snapshot — allowing the model to detect trend acceleration,
+regime transitions, and momentum shifts.
+""")
+
+    tab1, tab2 = st.tabs(["Confusion Matrix", "Training Curves"])
+    with tab1:
+        col, _ = st.columns([3, 2])
+        with col:
+            st.image(load_image("LSTM_confusion_matrix.png"), width="stretch")
+    with tab2:
+        st.image(load_image("LSTM_training_curves.png"), width="stretch")
+        st.caption("Left: train/val loss · Right: validation F1 macro per epoch")
+
 
 if   page == "Overview":           page_overview()
 elif page == "Model Performance":  page_performance()
 elif page == "Confusion Matrix":   page_confusion()
 elif page == "ROC Curves":         page_roc()
 elif page == "Feature Importance": page_feature_importance()
+elif page == "LSTM":               page_lstm()
+elif page == "RL Agent (DQN)":     page_rl()

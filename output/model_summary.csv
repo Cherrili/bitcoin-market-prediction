@@ -1,11 +1,11 @@
 Model,Accuracy,F1_macro,ROC_AUC,Best Params
 Logistic Regression,0.1977,0.1843,0.5611,{'C': 0.01}
-Random Forest,0.5781,0.3105,0.5218,"{'max_depth': 10, 'min_samples_split': 2, 'n_estimators': 100}"
+Random Forest,0.5781,0.3105,0.5217,"{'max_depth': 10, 'min_samples_split': 2, 'n_estimators': 100}"
 XGBoost,0.2529,0.1644,0.6103,"{'learning_rate': 0.1, 'max_depth': 3, 'min_child_weight': 1, 'n_estimators': 200, 'subsample': 0.8}"
 LightGBM,0.3369,0.3384,0.6158,"{'learning_rate': 0.1, 'max_depth': 5, 'min_child_samples': 50, 'n_estimators': 200, 'num_leaves': 31}"
 SVM,0.2179,0.1223,0.387,"{'C': 10, 'kernel': 'linear'}"
 KNN,0.577,0.3119,0.4974,"{'n_neighbors': 3, 'weights': 'distance'}"
 Voting Ensemble,0.4198,0.3903,0.5926,{}
 LSTM,0.5675,0.3452,0.5831,"hidden=128, layers=2, window=30, bidir"
-DQN (RL),0.3273,0.318,,DQN 60 episodes
+DQN (RL),0.3411,0.3384,,DQN 60 episodes
 Stacking (RF+KNN+LGB+XGB),0.4283,0.4124,0.5796,"OOF RF+KNN+LGB+XGB; max-conf routing, LGB weight=1.5x"

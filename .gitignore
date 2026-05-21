@@ -16,3 +16,16 @@ archive.zip
 # Virtual environment
 venv/
 .env
+
+# Node.js
+node_modules/
+package-lock.json
+
+# macOS
+.DS_Store
+
+# Claude worktrees
+.claude/worktrees/
+
+# Unpacked report temp files
+unpacked_report/
