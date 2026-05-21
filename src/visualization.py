@@ -67,18 +67,19 @@ def plot_eda(df: pd.DataFrame, output_dir: str) -> None:
     # Label counts
     counts = [int((y == c).sum()) for c in CLASSES]
     ax_bar.bar(CLASS_NAMES, counts,
-               color=["#d62728", "#ff7f0e", "#2ca02c"])
+               color=["#d62728", "#2ca02c"])
     ax_bar.set_title("Label Distribution")
     ax_bar.set_ylabel("Count")
 
     # Price timeline
-    color_map = {-1: "#d62728", 0: "#ff7f0e", 1: "#2ca02c"}
+    color_map  = {-1: "#d62728", 1: "#2ca02c"}
+    label_idx  = {c: i for i, c in enumerate(CLASSES)}
     for lbl in CLASSES:
         mask = df["label"] == lbl
         ax_price.scatter(df.loc[mask, "datetime"],
                          df.loc[mask, "price"],
                          s=2, c=color_map[lbl],
-                         label=CLASS_NAMES[lbl + 1])
+                         label=CLASS_NAMES[label_idx[lbl]])
     ax_price.set_yscale("log")
     ax_price.set_title("BTC Price (log scale) coloured by Market State")
     ax_price.set_ylabel("Price (USD, log)")

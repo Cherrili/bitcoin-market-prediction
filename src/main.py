@@ -7,6 +7,7 @@ Run from the SC6122 directory:
 
 import os
 import warnings
+import pandas as pd
 import matplotlib
 matplotlib.use("Agg")  # non-interactive backend, no tkinter needed
 import matplotlib.pyplot as plt
@@ -43,6 +44,10 @@ def main():
 
     print("\n5. Splitting train / test (time-ordered 80/20) …")
     split = split_data(df, feature_cols, train_ratio=0.8)
+
+    print("   Label dist (full) :", pd.Series(df["label"]).value_counts().sort_index().to_dict())
+    print("   Label dist (train):", pd.Series(split.y_train).value_counts().sort_index().to_dict())
+    print("   Label dist (test) :", pd.Series(split.y_test).value_counts().sort_index().to_dict())
 
     print("\n5.5. Feature selection (Top 40 by RF importance) …")
     split, feature_cols = select_top_features(split, feature_cols, top_n=40)

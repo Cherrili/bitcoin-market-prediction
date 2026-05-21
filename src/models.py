@@ -10,7 +10,7 @@ Each dict has keys:
     estimator : sklearn-compatible estimator
     params    : dict  (hyperparameter grid for GridSearchCV)
     scaled    : bool  (True → use StandardScaler output)
-    encoded   : bool  (True → labels must be in {0,1,2} for XGB/LGB)
+    encoded   : bool  (True → labels must be in {0,1} for XGB/LGB)
 """
 
 from sklearn.linear_model import LogisticRegression
@@ -27,7 +27,6 @@ def get_model_configs() -> list:
             "name": "Logistic Regression",
             "estimator": LogisticRegression(
                 solver="lbfgs", max_iter=2000, random_state=42,
-                class_weight="balanced",
             ),
             "params":  {"C": [0.01, 0.1, 1, 10]},
             "scaled":  True,
@@ -35,8 +34,7 @@ def get_model_configs() -> list:
         },
         {
             "name": "Random Forest",
-            "estimator": RandomForestClassifier(random_state=42, n_jobs=-1,
-                                                class_weight="balanced"),
+            "estimator": RandomForestClassifier(random_state=42, n_jobs=-1),
             "params": {
                 "n_estimators":      [100, 200],
                 "max_depth":         [5, 10, None],
@@ -48,9 +46,8 @@ def get_model_configs() -> list:
         {
             "name": "XGBoost",
             "estimator": xgb.XGBClassifier(
-                objective="multi:softprob",
-                num_class=3,
-                eval_metric="mlogloss",
+                objective="binary:logistic",
+                eval_metric="logloss",
                 use_label_encoder=False,
                 random_state=42,
                 n_jobs=-1,
@@ -60,19 +57,16 @@ def get_model_configs() -> list:
                 "max_depth":     [3, 5],
                 "learning_rate": [0.05, 0.1],
             },
-            "scaled":           False,
-            "encoded":          True,
-            "use_sample_weight": True,
+            "scaled":  False,
+            "encoded": True,
         },
         {
             "name": "LightGBM",
             "estimator": lgb.LGBMClassifier(
-                objective="multiclass",
-                num_class=3,
+                objective="binary",
                 random_state=42,
                 n_jobs=-1,
                 verbose=-1,
-                class_weight="balanced",
             ),
             "params": {
                 "n_estimators":  [100, 200],
@@ -84,8 +78,7 @@ def get_model_configs() -> list:
         },
         {
             "name": "SVM",
-            "estimator": SVC(probability=True, random_state=42,
-                             class_weight="balanced"),
+            "estimator": SVC(probability=True, random_state=42),
             "params": {
                 "C":      [0.1, 1, 10],
                 "kernel": ["rbf", "linear"],

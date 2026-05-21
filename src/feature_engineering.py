@@ -24,27 +24,30 @@ _EXCLUDE_COLS = {"datetime", "label", "future_price_30d", "return_30d"}
 
 def create_labels(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Attach 30-day forward-return labels:
-        Bull  ( 1) : return > +15 %
-        Bear  (-1) : return < -15 %
-        Side  ( 0) : otherwise
+    Attach 30-day forward-return labels using a 365-day rolling median
+    as the threshold (backward-looking, no data leakage):
+        Bull ( 1) : return > rolling median of past 365 days
+        Bear (-1) : otherwise
+    This keeps labels near 50/50 in each local time window regardless
+    of absolute market direction.
     Drops the last 30 rows where the future price is unknown.
     """
     df = df.copy()
     df["future_price_30d"] = df["price"].shift(-30)
     df["return_30d"] = (df["future_price_30d"] - df["price"]) / df["price"]
-
-    def _label(ret: float) -> int:
-        if   ret >  0.15: return  1
-        elif ret < -0.15: return -1
-        else:             return  0
-
-    df["label"] = df["return_30d"].apply(_label)
     df.dropna(subset=["future_price_30d"], inplace=True)
     df.reset_index(drop=True, inplace=True)
 
+    # Rolling median of past 365 rows; expanding median fills early window
+    roll_med = df["return_30d"].rolling(365, min_periods=60).median()
+    roll_med = roll_med.fillna(df["return_30d"].expanding(min_periods=2).median())
+
+    df["label"] = (df["return_30d"] > roll_med).map({True: 1, False: -1})
+
     counts = df["label"].value_counts().sort_index()
     print(f"   Label distribution : {counts.to_dict()}")
+    total = counts.sum()
+    print(f"   Label ratio        : { {k: f'{v/total:.1%}' for k, v in counts.items()} }")
     return df
 
 

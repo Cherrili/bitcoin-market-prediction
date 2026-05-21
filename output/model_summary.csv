@@ -1,7 +1,7 @@
-Model,Accuracy,F1_macro,ROC_AUC,Best Params
-Logistic Regression,0.1977,0.1843,0.5611,{'C': 0.01}
-Random Forest,0.5781,0.3105,0.5229,"{'max_depth': 10, 'min_samples_split': 2, 'n_estimators': 100}"
-XGBoost,0.22,0.1575,0.5392,"{'learning_rate': 0.05, 'max_depth': 5, 'n_estimators': 100}"
-LightGBM,0.2232,0.1216,0.5764,"{'learning_rate': 0.05, 'max_depth': 5, 'n_estimators': 100}"
-SVM,0.2168,0.1218,0.387,"{'C': 10, 'kernel': 'linear'}"
-KNN,0.577,0.3119,0.4974,"{'n_neighbors': 3, 'weights': 'distance'}"
+Model,Accuracy,F1_macro,ROC_AUC,Threshold,Acc_opt,F1_opt,Best Params
+Logistic Regression,0.4516,0.3441,0.6746,1.0,0.6599,0.6035,{'C': 1}
+Random Forest,0.6727,0.6543,0.7218,0.34,0.6961,0.6885,"{'max_depth': 10, 'min_samples_split': 2, 'n_estimators': 200}"
+XGBoost,0.4548,0.3404,0.7011,0.868,0.6759,0.6674,"{'learning_rate': 0.05, 'max_depth': 3, 'n_estimators': 200}"
+LightGBM,0.4421,0.3249,0.7181,0.948,0.7067,0.693,"{'learning_rate': 0.05, 'max_depth': 3, 'n_estimators': 200}"
+SVM,0.4697,0.369,0.6424,0.99,0.5909,0.5906,"{'C': 1, 'kernel': 'linear'}"
+KNN,0.6961,0.6712,0.7097,0.333,0.7216,0.7062,"{'n_neighbors': 3, 'weights': 'uniform'}"
